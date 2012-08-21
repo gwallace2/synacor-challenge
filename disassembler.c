@@ -26,7 +26,8 @@ int main( int argc, char* argv[] ) {
 		/*read the opcode*/
 		int numRead = read( STDIN_FILENO, &opcode, WORDSIZE );
 		if( numRead == WORDSIZE && opcode < 22 ) {
-			fprintf( outfile, "%4d: ", ++line );
+			line += numArgs[ opcode ] + 1;
+			fprintf( outfile, "%4d: ", line );
 			fprintf( outfile, "%s ", ops[ opcode ] );
 			args = ( unsigned short int* )malloc( sizeof( unsigned short int ) * numArgs[ opcode ] );
 			for( i = 0; i < numArgs[ opcode ]; i++ ) {

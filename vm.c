@@ -12,23 +12,27 @@
 #define NUM_REGISTERS ( 8 )
 #define BUFLIMIT ( 1024 )
 
-/*set register <a> to the value of <b>*/
-int set( unsigned short int* reg, unsigned short int value );
-
 int main( int argc, char* argv[] ) {
 
 	/*memory variables*/
 	unsigned short int* memory = ( unsigned short int* )malloc( sizeof( unsigned short int* ) * MEMSPACE );
 	unsigned short int* registers = ( unsigned short int* )malloc( sizeof( unsigned short int* ) * NUM_REGISTERS );
 	unsigned short int pc = 0;
-	unsigned short int stack; /*stack memory will be dynamic*/
+	unsigned short int* stack = 0; /*stack memory will be dynamic*/
+	int stackSize = 0;
 	int numArgs[] = { 0, 2, 1, 1, 3, 3, 1, 2, 2, 3, 3, 3, 3, 3, 2, 2, 2, 1, 0, 1, 1, 0 };
 
 	/*file variables*/
 	char* filename;
 	int fdesc;
 	int binSize;
-	
+
+	/*output messages*/
+	char* illegalOpcode = "Illegal opcode encountered. Exiting.\n";
+	char* illegalRegister = "Illegal register referenced. Exiting.\n";
+	char* stackError = "Stack error. Exiting\n";
+	char* illegalMemory = "Illegal memory access. Exiting.\n";
+	char* exitNormally = "Program exited normally.\n";
 	if( argc == 2 ) {
 
 		/*read binary into memory*/
@@ -54,6 +58,7 @@ int main( int argc, char* argv[] ) {
 
 			/*loop through and interpret each instruction*/
 			while( !end ) {
+				int jumped = 0;
 				
 				/*get opcode and arguments*/
 				opcode = memory[ pc ];
@@ -64,29 +69,92 @@ int main( int argc, char* argv[] ) {
 
 				/*execute instruction*/
 				switch( opcode ) {
+
+					/*halt*/
 					case 0:
-						write( STDOUT_FILENO, "Program exited normally.\n", strlen( "Program exited normally.\n" ) );
+						write( STDOUT_FILENO, exitNormally, strlen( exitNormally ) );
 						end = 1;
 						break;
+
+					/*set*/
+					case 1:
+						if( args[ 0 ] < MAXINT || args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] < MAXINT ) {
+							registers[ args[ 0 ] - MAXINT ] = args[ 1 ];
+						} else {
+							registers[ args[ 0 ] - MAXINT ] = registers[ args[ 1 ] - MAXINT ];
+						}
+
+					/*push*/
+					case 2:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 0 ] < MAXINT ) {
+							stack = realloc( stack, sizeof( unsigned short int ) * ++stackSize );
+							stack[ stackSize - 1 ] = args[ 0 ];
+						} else {
+							stack = realloc( stack, sizeof( unsigned short int ) * ++stackSize );
+							stack[ stackSize - 1 ] = registers[ args[ 0 ] - MAXINT ];
+						}
+
+					/*pop*/
+					case 3:
+						if( stackSize == 0 ) {
+							write( STDERR_FILENO, stackError, strlen( stackError ) );
+							end = 1;
+						} else if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							registers[ args[ 0 ] - MAXINT ] = stack[ --stackSize ];
+						}
+
+					/*jump*/
+					case 6:
+						if( args[ 0 ] >= binSize / 2 ) {
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory) );
+							end = 1;
+						} else {
+							pc = args[ 0 ];
+							jumped = 1;
+						}
+					/*out*/
 					case 19:
-						buffer = realloc( buffer, sizeof( char ) * bufsize + 1 );
-						buffer[ bufsize++ ] = args[ 0 ];
-						if( args[ 0 ] == '\n' || bufsize == BUFLIMIT ) {
-							write( STDOUT_FILENO, buffer, strlen( buffer ) );
-							free( buffer );
-							buffer = 0;
+						if( args[ 0 ] >= 9 && args[ 0 ] < 127 ) {
+							buffer = realloc( buffer, sizeof( char ) * bufsize + 1 );
+							buffer[ bufsize++ ] = args[ 0 ];
+							if( args[ 0 ] == '\n' || bufsize == BUFLIMIT ) {
+								write( STDOUT_FILENO, buffer, bufsize );
+								free( buffer );
+								buffer = 0;
+								bufsize = 0;
+							}
 						}
 						break;
+
+					/*noop*/
 					case 21:
+						/*do nothing*/
 						break;
 					default:
+						write( STDERR_FILENO, illegalOpcode, strlen( illegalOpcode ) );
 						end = 1;
 						break;
 				}
 
-				/*increment program couner*/
-				pc += numArgs[ opcode ] + 1;
-				free( args );
+				if( !jumped ) {
+
+					/*increment program couner*/
+					pc += numArgs[ opcode ] + 1;
+					/*printf( "line: %d\n", pc );*/
+					free( args );
+				}
 			}
 		} else {
 			perror( "error reading binary" );
@@ -98,8 +166,4 @@ int main( int argc, char* argv[] ) {
 		
 	}
 	return 0;
-}
-
-int set( unsigned short int* reg, const unsigned short int value ) {
-	*reg = value;
 }
