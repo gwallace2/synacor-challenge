@@ -12,6 +12,8 @@
 #define NUM_REGISTERS ( 8 )
 #define BUFLIMIT ( 1024 )
 
+#define DEBUG
+
 int main( int argc, char* argv[] ) {
 
 	/*memory variables*/
@@ -30,6 +32,7 @@ int main( int argc, char* argv[] ) {
 	/*output messages*/
 	char* illegalOpcode = "Illegal opcode encountered. Exiting.\n";
 	char* illegalRegister = "Illegal register referenced. Exiting.\n";
+	char* illegalLiteral = "Illegal literal referenced. Exiting.\n";
 	char* stackError = "Stack error. Exiting\n";
 	char* illegalMemory = "Illegal memory access. Exiting.\n";
 	char* exitNormally = "Program exited normally.\n";
@@ -86,9 +89,12 @@ int main( int argc, char* argv[] ) {
 							end = 1;
 						} else if( args[ 1 ] < MAXINT ) {
 							registers[ args[ 0 ] - MAXINT ] = args[ 1 ];
+							printf( "set: %d becomes %d\n", args[ 0 ], args[ 1 ] );
 						} else {
 							registers[ args[ 0 ] - MAXINT ] = registers[ args[ 1 ] - MAXINT ];
+							printf( "set: %d becomes %d\n", args[ 0 ], registers[ args[ 1 ] - MAXINT ] );
 						}
+						break;
 
 					/*push*/
 					case 2:
@@ -102,6 +108,7 @@ int main( int argc, char* argv[] ) {
 							stack = realloc( stack, sizeof( unsigned short int ) * ++stackSize );
 							stack[ stackSize - 1 ] = registers[ args[ 0 ] - MAXINT ];
 						}
+						break;
 
 					/*pop*/
 					case 3:
@@ -114,16 +121,91 @@ int main( int argc, char* argv[] ) {
 						} else {
 							registers[ args[ 0 ] - MAXINT ] = stack[ --stackSize ];
 						}
+						break;
 
 					/*jump*/
 					case 6:
 						if( args[ 0 ] >= binSize / 2 ) {
-							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory) );
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
 							end = 1;
 						} else {
 							pc = args[ 0 ];
 							jumped = 1;
+							#ifdef DEBUG
+							printf( "jumping to %d\n", args[ 0 ] );
+							#endif
 						}
+						break;
+
+					/*jump true*/
+					case 7:
+						if( args[ 1 ] >= binSize / 2 ) {
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
+							end = 1;
+						} else if( args[ 0 ] >= MAXINT + NUM_REGISTERS ){
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 0 ] < MAXINT ) {
+								if( args[ 0 ] != 0 ) {
+									pc = args[ 1 ];
+									jumped = 1;
+									#ifdef DEBUG
+									printf( "jumping to %d\n", args[ 1 ] );
+									#endif
+								}
+						} else {
+								if( registers[ args[ 0 ] ] != 0 ) {
+									pc = args[ 1 ];
+									jumped = 1;
+									#ifdef DEBUG
+									printf( "jumping to %d\n", args[ 1 ] );
+									#endif
+								}
+						}
+						break;
+
+					/*jump false*/
+					case 8:
+						if( args[ 1 ] >= binSize / 2 ) {
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
+							end = 1;
+						} else if( args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 0 ] < MAXINT ) {
+								printf( "args[ 0 ] = %d\n", args[ 0 ] );
+								if( args[ 0 ] == 0 ) {
+									pc = args[ 1 ];
+									jumped = 1;
+									#ifdef DEBUG
+									printf( "jumping to %d\n", args[ 1 ] );
+									#endif 
+								}
+						} else {
+								printf( "registers[ %d ] = %d\n", args[ 0 ] - MAXINT, registers[ args[ 0 ] ] );
+								if( registers[ args[ 0 ] - MAXINT ] == 0 ) {
+									pc = args[ 1 ];
+									jumped = 1;
+									#ifdef DEBUG
+									printf( "jumping to %d\n", args[ 1 ] );
+									#endif
+								}
+						}
+						break;
+
+					/*add*/
+					case 9:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT || args[ 2 ] >= MAXINT ) {
+							write( STDERR_FILENO, illegalLiteral, strlen( illegalLiteral ) );
+							end = 1;
+						} else {
+							registers[ args[ 0 ] - MAXINT ] = args[ 1 ] + args[ 2 ];
+							printf( "added value = %d\n", registers[ args[ 0 ] - MAXINT ] );
+						}
+						break;
 					/*out*/
 					case 19:
 						if( args[ 0 ] >= 9 && args[ 0 ] < 127 ) {
@@ -152,9 +234,11 @@ int main( int argc, char* argv[] ) {
 
 					/*increment program couner*/
 					pc += numArgs[ opcode ] + 1;
-					/*printf( "line: %d\n", pc );*/
 					free( args );
-				}
+					#ifdef DEBUG
+					printf( "line %d\n", pc );
+					#endif
+				} 
 			}
 		} else {
 			perror( "error reading binary" );
