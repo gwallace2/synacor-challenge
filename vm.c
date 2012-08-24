@@ -12,8 +12,6 @@
 #define NUM_REGISTERS ( 8 )
 #define BUFLIMIT ( 1024 )
 
-#define DEBUG
-
 int main( int argc, char* argv[] ) {
 
 	/*memory variables*/
@@ -89,10 +87,8 @@ int main( int argc, char* argv[] ) {
 							end = 1;
 						} else if( args[ 1 ] < MAXINT ) {
 							registers[ args[ 0 ] - MAXINT ] = args[ 1 ];
-							printf( "set: %d becomes %d\n", args[ 0 ], args[ 1 ] );
 						} else {
 							registers[ args[ 0 ] - MAXINT ] = registers[ args[ 1 ] - MAXINT ];
-							printf( "set: %d becomes %d\n", args[ 0 ], registers[ args[ 1 ] - MAXINT ] );
 						}
 						break;
 
@@ -120,9 +116,70 @@ int main( int argc, char* argv[] ) {
 							end = 1;
 						} else {
 							registers[ args[ 0 ] - MAXINT ] = stack[ --stackSize ];
+							/*stack = realloc( stack, sizeof( unsigned short int ) * --stackSize );*/
 						}
 						break;
 
+					/*eq*/
+					case 4:
+						if( args[ 0 ] < MAXINT || args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							if( arg1 == arg2 ) {
+								registers[ args[ 0 ] - MAXINT ] = 1;
+							} else {
+								registers[ args[ 0 ] - MAXINT ] = 0;
+							}
+						}
+						break;
+						
+
+					/*gt*/
+					case 5:
+						if( args[ 0 ] < MAXINT || args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							if( arg1 > arg2 ) {
+								registers[ args[ 0 ] - MAXINT ] = 1;
+							} else {
+								registers[ args[ 0 ] - MAXINT ] = 0;
+							}
+						}
+						break;
+
+						
 					/*jump*/
 					case 6:
 						if( args[ 0 ] >= binSize / 2 ) {
@@ -154,7 +211,7 @@ int main( int argc, char* argv[] ) {
 									#endif
 								}
 						} else {
-								if( registers[ args[ 0 ] ] != 0 ) {
+								if( registers[ args[ 0 ] - MAXINT ] != 0 ) {
 									pc = args[ 1 ];
 									jumped = 1;
 									#ifdef DEBUG
@@ -173,7 +230,6 @@ int main( int argc, char* argv[] ) {
 							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
 							end = 1;
 						} else if( args[ 0 ] < MAXINT ) {
-								printf( "args[ 0 ] = %d\n", args[ 0 ] );
 								if( args[ 0 ] == 0 ) {
 									pc = args[ 1 ];
 									jumped = 1;
@@ -182,7 +238,6 @@ int main( int argc, char* argv[] ) {
 									#endif 
 								}
 						} else {
-								printf( "registers[ %d ] = %d\n", args[ 0 ] - MAXINT, registers[ args[ 0 ] ] );
 								if( registers[ args[ 0 ] - MAXINT ] == 0 ) {
 									pc = args[ 1 ];
 									jumped = 1;
@@ -198,14 +253,231 @@ int main( int argc, char* argv[] ) {
 						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
 							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
 							end = 1;
-						} else if( args[ 1 ] >= MAXINT || args[ 2 ] >= MAXINT ) {
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
 							write( STDERR_FILENO, illegalLiteral, strlen( illegalLiteral ) );
 							end = 1;
 						} else {
-							registers[ args[ 0 ] - MAXINT ] = args[ 1 ] + args[ 2 ];
-							printf( "added value = %d\n", registers[ args[ 0 ] - MAXINT ] );
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = arg1 + arg2;
+							registers[ args[ 0 ] - MAXINT ] %= MAXINT;
 						}
 						break;
+
+					/*mult*/
+					case 10:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = arg1 * arg2;
+							registers[ args[ 0 ] - MAXINT ] %= MAXINT;
+						}
+						break;
+
+					/*mod*/
+					case 11:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = arg1 % arg2;
+							registers[ args[ 0 ] - MAXINT ] %= MAXINT;
+						}
+						break;
+
+					/*and*/
+					case 12:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = arg1 & arg2;
+							
+						}
+						break;
+
+					/*or*/
+					case 13:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS || args[ 2 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							unsigned short int arg2;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							if( args[ 2 ] < MAXINT ) {
+								arg2 = args[ 2 ];
+							} else {
+								arg2 = registers[ args[ 2 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = arg1 | arg2;
+							
+						}
+						break;
+
+					/*not*/
+					case 14:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int arg1;
+							if( args[ 1 ] < MAXINT ) {
+								arg1 = args[ 1 ];
+							} else {
+								arg1 = registers[ args[ 1 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = ( ~arg1 );
+							registers[ args[ 0 ] - MAXINT ] %= MAXINT;
+						}
+						break;
+
+					/*rmem*/
+					case 15:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS || args[ 0 ] < MAXINT ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
+							end = 1;
+						} else {
+							unsigned short int target;
+							if( args[ 1 ] < MAXINT ) {
+								target = args[ 1 ];
+							} else {
+								target = registers[ args[ 1 ] - MAXINT ];
+							}
+							registers[ args[ 0 ] - MAXINT ] = memory[ target ];
+						}
+						break;
+
+					/*wmem*/
+					case 16:
+						if( args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
+							end = 1;
+						} else if( args[ 1 ] >= MAXINT + NUM_REGISTERS ) {
+							printf( "%d\n", args[ 1 ] );
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+							end = 1;
+						} else {
+							unsigned short int dest;
+							unsigned short int value;
+							if( args[ 0 ] < MAXINT ) {
+								dest = args[ 0 ];
+							} else {
+								dest = registers[ args[ 0 ] - MAXINT ];
+							}
+							if( args[ 1 ] < MAXINT ) {
+								value = args[ 1 ];
+							} else {
+								value = registers[ args[ 1 ] - MAXINT ];
+							}
+							memory[ dest ] = value;
+						}
+						break;
+
+					/*call*/
+					case 17:
+						if( ( args[ 0 ] >= binSize / 2 && args[ 0 ] < MAXINT ) || args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							printf( "%d\n", args[ 0 ] );
+							write( STDERR_FILENO, illegalMemory, strlen( illegalMemory ) );
+							end = 1;
+						} else {
+							unsigned short int target;
+							if( args[ 0 ] < MAXINT ) {
+								target = args[ 0 ];
+							} else {
+								target = registers[ args[ 0 ] - MAXINT ];
+							}
+							stack = realloc( stack, sizeof( unsigned short int ) * ++stackSize );
+							stack[ stackSize - 1 ] = pc + numArgs[ opcode ] + 1;
+							pc = target;
+							jumped = 1;
+							#ifdef DEBUG
+							printf( "jumping to %d\n", args[ 0 ] );
+							#endif
+							
+						}
+						break;
+
+					/*ret*/
+					case 18:
+						
+						pc = stack[ --stackSize ];
+						/*stack = realloc( stack, sizeof( unsigned short int ) * --stackSize );*/
+						jumped = 1;
+						#ifdef DEBUG
+						printf( "jumping to %d\n", pc );
+						#endif
+						break;
+
 					/*out*/
 					case 19:
 						if( args[ 0 ] >= 9 && args[ 0 ] < 127 ) {
@@ -220,6 +492,14 @@ int main( int argc, char* argv[] ) {
 						}
 						break;
 
+					/*in*/
+					case 20:
+						if( args[ 0 ] < MAXINT || args[ 0 ] >= MAXINT + NUM_REGISTERS ) {
+							write( STDERR_FILENO, illegalRegister, strlen( illegalRegister ) );
+						} else {
+							read( STDIN_FILENO, registers + ( args[ 0 ] - MAXINT ), 1 );
+						}
+						break;
 					/*noop*/
 					case 21:
 						/*do nothing*/
