@@ -36,7 +36,10 @@ int main( int argc, char* argv[] ) {
 				if( opcode == 19 ) {
 					if( *( args + i ) == '\n' ) {
 						fprintf( outfile, "'\\n' ", *( args + i ) );
+					} else if( *( args + i ) < 32 || *( args + i ) >= 127 ) {
+						fprintf( outfile, "%d ", *( args + i ) );
 					} else {
+
 						fprintf( outfile, "'%c' ", *( args + i ) );
 					}
 				} else {
@@ -45,7 +48,7 @@ int main( int argc, char* argv[] ) {
 			}
 			free( args );
 			fprintf( outfile, "\n" );
-		} else if ( opcode >= 22 ) {
+		} else if ( numRead == WORDSIZE && opcode >= 22 ) {
 			int cont;
 			char response;
 			fprintf( outfile, "%4d: ", ++line );
